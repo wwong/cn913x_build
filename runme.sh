@@ -303,7 +303,7 @@ fi
 echo "Building the kernel"
 cd $ROOTDIR/build/linux
 #make defconfig
-./scripts/kconfig/merge_config.sh arch/arm64/configs/defconfig $ROOTDIR/configs/linux/cn913x_additions.config
+./scripts/kconfig/merge_config.sh arch/arm64/configs/defconfig $ROOTDIR/configs/linux/cn913x_additions.config $ROOTDIR/configs/linux/mt76_additions.config
 make -j${PARALLEL} all #Image dtbs modules
 
 rm -rf $ROOTDIR/images/tmp
