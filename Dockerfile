@@ -8,7 +8,7 @@ ENV BOARD_CONFIG=2
 ENV FORCE_UNSAFE_CONFIGURE=1
 ENV TZ=America/Los_Angeles
 
-RUN apt-get update && apt-get install -y build-essential git dosfstools e2fsprogs parted sudo mtools p7zip p7zip-full device-tree-compiler acpica-tools u-boot-tools e2tools qemu-system-arm libssl-dev cpio rsync bc bison flex python unzip wget squashfs-tools vim
+RUN apt-get update && apt-get install -y build-essential git dosfstools e2fsprogs parted sudo mtools p7zip p7zip-full device-tree-compiler acpica-tools u-boot-tools e2tools qemu-system-arm libssl-dev cpio rsync bc bison flex python unzip wget squashfs-tools vim kmod
 
 RUN git config --global user.email "$GIT_EMAIL" && git config --global user.name "$GIT_NAME"
 
