@@ -37,7 +37,7 @@ BUILDROOT_VERSION=2020.02.1
 # Misc
 ###############################################################################
 
-RELEASE=${RELEASE:-v5.15}
+RELEASE=${RELEASE:-v5.18}
 SHALLOW=${SHALLOW:true}
 	if [ "x$SHALLOW" == "xtrue" ]; then
 		SHALLOW_FLAG="--depth 1"
@@ -147,9 +147,9 @@ SDK_COMPONENTS="u-boot mv-ddr-marvell arm-trusted-firmware linux"
 for i in $SDK_COMPONENTS; do
 	if [[ ! -d $ROOTDIR/build/$i ]]; then
 		if [ "x$i" == "xlinux" ]; then
-			echo "Cloing https://www.github.com/torvalds/$i release $RELEASE"
+			echo "Cloning https://www.github.com/torvalds/$i release v5.15 then rebasing to $RELEASE"
 			cd $ROOTDIR/build
-			git clone $SHALLOW_FLAG git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git linux -b $RELEASE
+			git clone $SHALLOW_FLAG git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git linux -b v5.15
 		elif [ "x$i" == "xarm-trusted-firmware" ]; then
 			echo "Cloning atf from mainline"
 			cd $ROOTDIR/build
@@ -179,6 +179,11 @@ for i in $SDK_COMPONENTS; do
 		cd $ROOTDIR/build/$i
 		if [ -d $ROOTDIR/patches/$i ]; then
 			git am $ROOTDIR/patches/$i/*.patch
+		fi
+
+
+		if [ "x$i" == "xlinux" ]; then
+			git rebase $RELEASE
 		fi
 	fi
 done
@@ -237,7 +242,7 @@ EOF
 	chmod +x overlay/etc/init.d/S99bootstrap-ubuntu.sh
 	make
 	IMG=ubuntu-core.ext4.tmp
-	truncate -s 350M $IMG
+	truncate -s 4GB $IMG
 	qemu-system-aarch64 -m 1G -M virt -cpu cortex-a57 -nographic -smp 1 -kernel output/images/Image -append "console=ttyAMA0" -netdev user,id=eth0 -device virtio-net-device,netdev=eth0 -initrd output/images/rootfs.cpio.gz -drive file=$IMG,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 -no-reboot
         mv $IMG $ROOTDIR/build/ubuntu-core.ext4
 
@@ -360,11 +365,18 @@ cp $ROOTDIR/build/linux/arch/arm64/boot/Image $ROOTDIR/images
 cd $ROOTDIR/
 truncate -s 420M $ROOTDIR/images/tmp/ubuntu-core.img
 parted --script $ROOTDIR/images/tmp/ubuntu-core.img mklabel msdos mkpart primary 64MiB 417MiB
+dd if=$ROOTDIR/images/tmp/ubuntu-core.ext4 of=$ROOTDIR/images/tmp/ubuntu-core.img bs=1M seek=64 conv=notrunc
+dd if=$ROOTDIR/build/arm-trusted-firmware/build/t9130/release/flash-image.bin of=$ROOTDIR/images/tmp/ubuntu-core.img bs=512 seek=4096 conv=notrunc
+
+echo '131072, , L, *' | sfdisk -w never -W never $ROOTDIR/images/tmp/ubuntu-core.img
+
 # Generate the above partuuid 3030303030 which is the 4 characters of '0' in ascii
 echo "0000" | dd of=$ROOTDIR/images/tmp/ubuntu-core.img bs=1 seek=440 conv=notrunc
-dd if=$ROOTDIR/images/tmp/ubuntu-core.ext4 of=$ROOTDIR/images/tmp/ubuntu-core.img bs=1M seek=64 conv=notrunc
 
-dd if=$ROOTDIR/build/arm-trusted-firmware/build/t9130/release/flash-image.bin of=$ROOTDIR/images/tmp/ubuntu-core.img bs=512 seek=4096 conv=notrunc
+# sfdisk v2.36 adds the --disk-id flag for changing a disk UUID
+# Uncomment this line when we bump the docker image version beyond 20.04
+# sfdisk --disk-id $ROOTDIR/images/tmp/ubuntu-core.img 0x3030303030
+
 mv $ROOTDIR/images/tmp/ubuntu-core.img $ROOTDIR/images/ubuntu-${DTB_KERNEL}-${UBOOT_ENVIRONMENT}.img
 
 echo "Images are ready at $ROOTDIR/image/"
